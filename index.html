@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>傾聽五層次 練習場</title>
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --card: #ffffff;
+    --ink: #2c2c2c;
+    --sub: #6b6b6b;
+    --accent: #d97706;
+    --accent-soft: #fef3c7;
+    --line: #e5e3dc;
+    --l0: #9ca3af;
+    --l1: #f59e0b;
+    --l2: #ec4899;
+    --l3: #3b82f6;
+    --l4: #10b981;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Noto Sans TC", "PingFang TC", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    padding: 20px 14px 80px;
+  }
+  .wrap { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: 0.5px; }
+  .subtitle { color: var(--sub); margin-bottom: 24px; font-size: 14px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 17px;
+    margin: 0 0 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .step {
+    background: var(--accent); color: #fff;
+    width: 26px; height: 26px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+  }
+  textarea, input {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #fafafa;
+  }
+  textarea { resize: vertical; }
+  textarea:focus, input:focus {
+    outline: none; border-color: var(--accent); background: #fff;
+  }
+  button {
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 10px;
+    padding: 10px 18px; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  button:hover { opacity: 0.88; }
+  button.ghost {
+    background: transparent; color: var(--sub);
+    border: 1px solid var(--line);
+  }
+  button.big {
+    font-size: 18px; padding: 16px 32px;
+    width: 100%; letter-spacing: 2px;
+  }
+  button.danger { background: #dc2626; }
+  .toolbar { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+  .worry-list { margin-top: 14px; max-height: 360px; overflow-y: auto; }
+  .worry-item {
+    background: #fafafa;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    display: flex; justify-content: space-between; gap: 12px;
+  }
+  .seat-tag {
+    background: var(--accent-soft); color: #78350f;
+    border-radius: 6px; padding: 2px 8px;
+    font-weight: 600; font-size: 12px; margin-right: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .del { background: transparent; color: #c00; border: none; padding: 0 6px; font-size: 18px; cursor: pointer; }
+  .count { color: var(--sub); font-size: 13px; margin-top: 6px; }
+  .draw-result { text-align: center; padding: 16px 0; }
+  .level-badge {
+    display: inline-block; padding: 5px 14px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 10px;
+  }
+  .level-name { font-size: 24px; font-weight: 700; margin: 6px 0; }
+  .level-desc { color: var(--sub); font-size: 14px; margin-bottom: 16px; }
+  .worry-box {
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
+    padding: 14px 18px; border-radius: 8px;
+    text-align: left; font-size: 15px;
+    margin: 14px 0 18px; color: #78350f;
+  }
+  .worry-box .label {
+    font-size: 12px; color: var(--accent);
+    font-weight: 600; letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .hint {
+    background: #f0f9ff; border: 1px dashed #93c5fd;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 13px; color: #1e40af;
+    margin: 10px 0; text-align: left;
+  }
+  .hidden { display: none !important; }
+  .mic {
+    background: #10b981; border: none; border-radius: 10px;
+    padding: 10px 14px; color: white; font-size: 14px; cursor: pointer;
+  }
+  .mic.recording { background: #dc2626; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity: 0.6; } }
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--ink); color: #fff;
+    border-radius: 12px; padding: 10px 16px;
+    font-size: 14px; margin-bottom: 16px;
+  }
+  .topbar b { color: #fbbf24; font-variant-numeric: tabular-nums; }
+  .entry-wrap {
+    max-width: 420px; margin: 60px auto;
+    background: #fff; border-radius: 16px;
+    padding: 32px; border: 1px solid var(--line);
+  }
+  .entry-wrap label {
+    display: block; font-size: 14px; color: var(--sub);
+    margin: 16px 0 6px; font-weight: 600;
+  }
+  .entry-wrap input {
+    font-size: 17px; padding: 14px; text-align: center;
+    letter-spacing: 3px;
+  }
+  .footer-note {
+    text-align: center; color: var(--sub); font-size: 12px; margin-top: 20px;
+  }
+  .status {
+    font-size: 12px; color: var(--sub); text-align: center; margin-top: 10px;
+  }
+  .status.live::before { content: '● '; color: #10b981; }
+  .status.off::before { content: '● '; color: #dc2626; }
+</style>
+</head>
+<body>
+
+<!-- 入口畫面 -->
+<div class="wrap" id="entryScreen">
+  <div class="entry-wrap">
+    <h1 style="text-align:center; margin-bottom: 8px;">傾聽五層次</h1>
+    <p class="subtitle" style="text-align:center;">習慣五 · 知彼解己</p>
+
+    <label>房間密碼</label>
+    <input type="text" id="roomInput" placeholder="輸入房間密碼" autocomplete="off">
+
+    <label>班級座號（五位數）</label>
+    <input type="tel" id="seatInput" placeholder="例：10512" maxlength="5" pattern="\d{5}" inputmode="numeric">
+
+    <div style="margin-top: 24px;">
+      <button class="big" id="joinBtn">進入房間</button>
+    </div>
+
+    <p id="entryError" style="color:#dc2626; text-align:center; margin-top:12px; font-size:14px;"></p>
+
+    <p class="footer-note" style="margin-top: 30px;">
+      座號格式：年級(1)+班級(2)+座號(2)<br>
+      例：一年五班 12 號 → 10512
+    </p>
+  </div>
+</div>
+
+<!-- 主畫面 -->
+<div class="wrap hidden" id="mainScreen">
+
+  <div class="topbar">
+    <div>房間：<b id="roomTag"></b></div>
+    <div>我的座號：<b id="seatTag"></b></div>
+    <button class="ghost" id="leaveBtn" style="padding: 4px 10px; font-size: 13px; color:#fbbf24; border-color:#444;">離開</button>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="card">
+    <h2><span class="step">1</span>輸入煩惱</h2>
+    <textarea id="worryInput" rows="2" placeholder="例如：我昨天段考數學只考 58 分，我覺得我完蛋了……"></textarea>
+    <div class="toolbar">
+      <button class="mic" id="worryMicBtn" title="語音輸入">🎤 語音</button>
+      <button id="addWorryBtn">加入煩惱池</button>
+    </div>
+    <div class="count" id="worryCount">煩惱池：0 則</div>
+    <div class="worry-list" id="worryList"></div>
+    <p class="status" id="syncStatus">連線中…</p>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card">
+    <h2><span class="step">2</span>抽籤</h2>
+    <button class="big" id="drawBtn">🎲 抽一張</button>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="card hidden" id="resultCard">
+    <h2><span class="step">3</span>練習回應</h2>
+    <div class="draw-result">
+      <div class="level-badge" id="levelBadge"></div>
+      <div class="level-name" id="levelName"></div>
+      <div class="level-desc" id="levelDesc"></div>
+    </div>
+    <div class="worry-box">
+      <div class="label"><span id="drawnSeat"></span> 說：</div>
+      <div id="drawnWorry"></div>
+    </div>
+    <div class="hint" id="levelHint"></div>
+    <div>
+      <label style="display:block; font-size:14px; color:var(--sub); margin-bottom:6px;">你會怎麼回應？</label>
+      <textarea id="responseInput" rows="3" placeholder="按這個層次的方式，回應對方……"></textarea>
+      <div class="toolbar">
+        <button class="mic" id="responseMicBtn">🎤 語音</button>
+        <button class="ghost" id="redrawBtn">重抽</button>
+        <button id="saveResponseBtn">完成這輪</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 老師區 -->
+  <div class="card">
+    <h2><span class="step">⚙</span>管理</h2>
+    <div class="toolbar" style="justify-content:flex-start;">
+      <button class="ghost" id="exportBtn">匯出煩惱池</button>
+      <button class="danger" id="clearBtn">清空整個房間</button>
+    </div>
+    <p class="footer-note" style="margin-top: 10px;">清空會把房間內所有人的煩惱刪除，無法復原。</p>
+  </div>
+
+  <p class="footer-note">柯維《與成功有約》習慣五 · 大乃老師課堂工具</p>
+</div>
+
+<!-- Firebase CDN (compat mode, 簡單) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+/* ============================================================
+   Firebase 設定 — 請把你在 Firebase Console 取得的 config 貼到這裡
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "REPLACE_ME",
+  authDomain: "REPLACE_ME",
+  databaseURL: "REPLACE_ME",
+  projectId: "REPLACE_ME",
+  storageBucket: "REPLACE_ME",
+  messagingSenderId: "REPLACE_ME",
+  appId: "REPLACE_ME"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ============================================================
+   傾聽五層次資料
+   ============================================================ */
+const LEVELS = [
+  { n: 0, key: 'l0', name: '聽而不聞', desc: '完全沒在聽，可能在滑手機、發呆。',
+    hint: '提示：示範「零層次」—— 可以完全忽略、敷衍一個「嗯」、或直接轉身做別的事。' },
+  { n: 1, key: 'l1', name: '虛應故事', desc: '表面回應，但沒有真正進入對方內容。',
+    hint: '提示：示範「第一層」—— 說「好啦好啦」「加油加油」「知道了」這類罐頭語。' },
+  { n: 2, key: 'l2', name: '選擇性的聽', desc: '只聽自己有興趣的部分，岔題。',
+    hint: '提示：示範「第二層」—— 從對方話裡挑一個點岔開（例：聽到「58 分」就追問英文幾分）。' },
+  { n: 3, key: 'l3', name: '專注的聽', desc: '認真聽了，但從「自己的立場」給建議或解方。',
+    hint: '提示：示範「第三層」—— 認真回應，但馬上給方法、建議、經驗談，站在自己的角度。' },
+  { n: 4, key: 'l4', name: '同理心傾聽', desc: '站在對方的立場，先接住情緒與需求。',
+    hint: '提示：示範「第四層」—— 先反映對方的感受（「聽起來你……」），確認你有讀到他的情緒，再談其他。' }
+];
+
+/* ============================================================
+   狀態
+   ============================================================ */
+let room = null, mySeat = null, worriesRef = null, worriesCache = {};
+
+const $ = id => document.getElementById(id);
+
+/* ============================================================
+   入口：房間 + 座號
+   ============================================================ */
+// 還原上次登入（用 sessionStorage 避免 reload 掉）
+(function restore() {
+  const s = sessionStorage.getItem('llp-session');
+  if (!s) return;
+  try {
+    const { r, seat } = JSON.parse(s);
+    if (r && seat) enter(r, seat);
+  } catch {}
+})();
+
+$('joinBtn').onclick = () => {
+  const r = $('roomInput').value.trim();
+  const s = $('seatInput').value.trim();
+  if (!r) return showEntryError('請輸入房間密碼');
+  if (!/^\d{5}$/.test(s)) return showEntryError('座號必須是 5 位數字');
+  enter(r, s);
+};
+
+function showEntryError(msg) {
+  $('entryError').textContent = msg;
+}
+
+function enter(r, seat) {
+  room = r;
+  mySeat = seat;
+  sessionStorage.setItem('llp-session', JSON.stringify({ r, seat }));
+
+  $('entryScreen').classList.add('hidden');
+  $('mainScreen').classList.remove('hidden');
+  $('roomTag').textContent = r;
+  $('seatTag').textContent = seat;
+
+  // 房間路徑用密碼本身當 key
+  const safeRoom = encodeURIComponent(r);
+  worriesRef = db.ref(`rooms/${safeRoom}/worries`);
+
+  worriesRef.on('value', snap => {
+    worriesCache = snap.val() || {};
+    renderList();
+    $('syncStatus').className = 'status live';
+    $('syncStatus').textContent = '已連線到房間';
+  }, err => {
+    console.error(err);
+    $('syncStatus').className = 'status off';
+    $('syncStatus').textContent = '連線失敗：' + err.message;
+  });
+}
+
+$('leaveBtn').onclick = () => {
+  if (worriesRef) worriesRef.off();
+  sessionStorage.removeItem('llp-session');
+  location.reload();
+};
+
+/* ============================================================
+   渲染煩惱池
+   ============================================================ */
+function renderList() {
+  const list = $('worryList');
+  const entries = Object.entries(worriesCache)
+    .sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0));
+  list.innerHTML = '';
+  entries.forEach(([key, w], i) => {
+    const div = document.createElement('div');
+    div.className = 'worry-item';
+    const canDel = w.seat === mySeat;
+    div.innerHTML = `
+      <span>
+        <span class="seat-tag">${escapeHtml(w.seat || '?????')}</span>
+        ${escapeHtml(w.text)}
+      </span>
+      ${canDel ? `<button class="del" data-key="${key}" title="刪除">✕</button>` : ''}
+    `;
+    list.appendChild(div);
+  });
+  $('worryCount').textContent = `煩惱池：${entries.length} 則`;
+  list.querySelectorAll('.del').forEach(btn => {
+    btn.onclick = () => worriesRef.child(btn.dataset.key).remove();
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============================================================
+   新增煩惱
+   ============================================================ */
+$('addWorryBtn').onclick = () => {
+  const v = $('worryInput').value.trim();
+  if (!v) return;
+  worriesRef.push({ seat: mySeat, text: v, ts: Date.now() });
+  $('worryInput').value = '';
+};
+
+/* ============================================================
+   抽籤
+   ============================================================ */
+$('drawBtn').onclick = draw;
+$('redrawBtn').onclick = draw;
+
+function draw() {
+  const entries = Object.values(worriesCache);
+  if (entries.length === 0) {
+    alert('煩惱池是空的，請先加入至少一則煩惱！');
+    return;
+  }
+  const worry = entries[Math.floor(Math.random() * entries.length)];
+  const level = LEVELS[Math.floor(Math.random() * LEVELS.length)];
+  const color = getComputedStyle(document.documentElement).getPropertyValue('--' + level.key).trim();
+
+  $('levelBadge').textContent = `第 ${level.n} 層`;
+  $('levelBadge').style.background = color;
+  $('levelName').textContent = level.name;
+  $('levelName').style.color = color;
+  $('levelDesc').textContent = level.desc;
+  $('levelHint').textContent = level.hint;
+  $('drawnWorry').textContent = worry.text;
+  $('drawnSeat').textContent = worry.seat || '?????';
+  $('responseInput').value = '';
+  $('resultCard').classList.remove('hidden');
+  $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+$('saveResponseBtn').onclick = () => {
+  const r = $('responseInput').value.trim();
+  if (!r) return alert('寫一下你的回應再完成這輪～');
+  alert('這輪完成！換下一位輪替，或按「重抽」再練一次。');
+};
+
+/* ============================================================
+   匯出 / 清空
+   ============================================================ */
+$('exportBtn').onclick = () => {
+  const entries = Object.values(worriesCache)
+    .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  if (entries.length === 0) return alert('煩惱池是空的');
+  const text = entries.map((w, i) => `${i + 1}. [${w.seat}] ${w.text}`).join('\n');
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `煩惱池_${room}_${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+$('clearBtn').onclick = () => {
+  if (!confirm(`確定清空房間「${room}」？所有人的煩惱會被刪除，無法復原。`)) return;
+  worriesRef.remove();
+};
+
+/* ============================================================
+   語音輸入
+   ============================================================ */
+function setupMic(btn, target) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { btn.style.display = 'none'; return; }
+  let rec = null;
+  btn.onclick = () => {
+    if (btn.classList.contains('recording')) { rec && rec.stop(); return; }
+    rec = new SR();
+    rec.lang = 'zh-TW';
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.onresult = e => {
+      target.value = Array.from(e.results).map(r => r[0].transcript).join('');
+    };
+    rec.onend = () => btn.classList.remove('recording');
+    rec.onerror = () => btn.classList.remove('recording');
+    rec.start();
+    btn.classList.add('recording');
+  };
+}
+setupMic($('worryMicBtn'), $('worryInput'));
+setupMic($('responseMicBtn'), $('responseInput'));
+</script>
+</body>
+</html>
