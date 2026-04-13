@@ -163,8 +163,12 @@
   }
   .role-badge.teacher { background: #fbbf24; color: #78350f; }
   .role-badge.student { background: #3b82f6; color: #fff; }
-  body:not(.is-teacher) .teacher-only { display: none !important; }
-  body:not(.is-student) .student-only { display: none !important; }
+  /* 預設先藏起老師 / 學生 專屬元素，確認身分後才顯示 */
+  .teacher-only, .student-only { display: none; }
+  body.is-teacher .teacher-only { display: block; }
+  body.is-student .student-only { display: block; }
+  /* hidden 一律最優先 */
+  .hidden { display: none !important; }
   .student-note {
     background: #eff6ff; border-radius: 8px;
     padding: 12px 14px; font-size: 14px; color: #1e40af;
@@ -310,6 +314,15 @@ const LEVELS = [
    ============================================================ */
 let room = null, mySeat = null, worriesRef = null, worriesCache = {}, isTeacher = false;
 
+// 此瀏覽器的獨立識別（存 localStorage，保留到下次上課）
+const TOKEN_KEY = 'llp-browser-token';
+let myToken = localStorage.getItem(TOKEN_KEY);
+if (!myToken) {
+  myToken = (crypto && crypto.randomUUID) ? crypto.randomUUID() :
+    (Date.now() + '-' + Math.random().toString(36).slice(2));
+  localStorage.setItem(TOKEN_KEY, myToken);
+}
+
 const $ = id => document.getElementById(id);
 
 /* ============================================================
@@ -347,16 +360,24 @@ function enter(r, seat) {
   $('roomTag').textContent = r;
   $('seatTag').textContent = seat;
 
+  // 預設先當學生（畫面先收到學生版），等老師認證通過才提升
+  applyRole(false);
+
   const safeRoom = encodeURIComponent(r);
   const roomRef = db.ref(`rooms/${safeRoom}`);
   worriesRef = roomRef.child('worries');
 
-  // 「第一個進房間的人」自動成為老師（透過 transaction 確保 race condition 安全）
+  // 第一個進房間的「瀏覽器」成為老師（用獨立 token 識別，不受座號影響）
   roomRef.child('owner').transaction(current => {
-    return current == null ? mySeat : undefined; // undefined = 不修改
+    if (current == null) {
+      return { token: myToken, seat: mySeat, ts: Date.now() };
+    }
+    return; // 不修改
   }, (err, committed, snap) => {
+    if (err) { console.error(err); return; }
     const owner = snap && snap.val();
-    applyRole(owner === mySeat);
+    const amTeacher = owner && owner.token === myToken;
+    applyRole(!!amTeacher);
   });
 
   worriesRef.on('value', snap => {
@@ -378,7 +399,8 @@ function applyRole(teacher) {
   body.classList.add(teacher ? 'is-teacher' : 'is-student');
   const badge = $('roleBadge');
   badge.className = 'role-badge ' + (teacher ? 'teacher' : 'student');
-  badge.textContent = teacher ? '🎓 老師' : '👤 學生';
+  badge.textContent = teacher ? '老師' : '學生';
+  renderList();
 }
 
 $('leaveBtn').onclick = () => {
