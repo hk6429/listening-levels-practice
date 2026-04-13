@@ -156,6 +156,20 @@
   }
   .status.live::before { content: '● '; color: #10b981; }
   .status.off::before { content: '● '; color: #dc2626; }
+  .role-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; margin-left: 8px;
+    vertical-align: middle;
+  }
+  .role-badge.teacher { background: #fbbf24; color: #78350f; }
+  .role-badge.student { background: #3b82f6; color: #fff; }
+  body:not(.is-teacher) .teacher-only { display: none !important; }
+  body:not(.is-student) .student-only { display: none !important; }
+  .student-note {
+    background: #eff6ff; border-radius: 8px;
+    padding: 12px 14px; font-size: 14px; color: #1e40af;
+    text-align: center; margin-top: 10px;
+  }
 </style>
 </head>
 <body>
@@ -189,8 +203,11 @@
 <div class="wrap hidden" id="mainScreen">
 
   <div class="topbar">
-    <div>房間：<b id="roomTag"></b></div>
-    <div>我的座號：<b id="seatTag"></b></div>
+    <div>
+      房間：<b id="roomTag"></b>
+      <span id="roleBadge" class="role-badge"></span>
+    </div>
+    <div>座號：<b id="seatTag"></b></div>
     <button class="ghost" id="leaveBtn" style="padding: 4px 10px; font-size: 13px; color:#fbbf24; border-color:#444;">離開</button>
   </div>
 
@@ -204,17 +221,18 @@
     </div>
     <div class="count" id="worryCount">煩惱池：0 則</div>
     <div class="worry-list" id="worryList"></div>
+    <p class="student-note student-only">已送出的煩惱會進入老師的抽籤池。你可以刪除或修改自己的輸入。</p>
     <p class="status" id="syncStatus">連線中…</p>
   </div>
 
-  <!-- STEP 2 -->
-  <div class="card">
+  <!-- STEP 2 (老師才有) -->
+  <div class="card teacher-only">
     <h2><span class="step">2</span>抽籤</h2>
     <button class="big" id="drawBtn">🎲 抽一張</button>
   </div>
 
-  <!-- STEP 3 -->
-  <div class="card hidden" id="resultCard">
+  <!-- STEP 3 (老師才有) -->
+  <div class="card hidden teacher-only" id="resultCard">
     <h2><span class="step">3</span>練習回應</h2>
     <div class="draw-result">
       <div class="level-badge" id="levelBadge"></div>
@@ -238,8 +256,8 @@
   </div>
 
   <!-- 老師區 -->
-  <div class="card">
-    <h2><span class="step">⚙</span>管理</h2>
+  <div class="card teacher-only">
+    <h2><span class="step">⚙</span>老師管理</h2>
     <div class="toolbar" style="justify-content:flex-start;">
       <button class="ghost" id="exportBtn">匯出煩惱池</button>
       <button class="danger" id="clearBtn">清空整個房間</button>
@@ -290,7 +308,7 @@ const LEVELS = [
 /* ============================================================
    狀態
    ============================================================ */
-let room = null, mySeat = null, worriesRef = null, worriesCache = {};
+let room = null, mySeat = null, worriesRef = null, worriesCache = {}, isTeacher = false;
 
 const $ = id => document.getElementById(id);
 
@@ -329,9 +347,17 @@ function enter(r, seat) {
   $('roomTag').textContent = r;
   $('seatTag').textContent = seat;
 
-  // 房間路徑用密碼本身當 key
   const safeRoom = encodeURIComponent(r);
-  worriesRef = db.ref(`rooms/${safeRoom}/worries`);
+  const roomRef = db.ref(`rooms/${safeRoom}`);
+  worriesRef = roomRef.child('worries');
+
+  // 「第一個進房間的人」自動成為老師（透過 transaction 確保 race condition 安全）
+  roomRef.child('owner').transaction(current => {
+    return current == null ? mySeat : undefined; // undefined = 不修改
+  }, (err, committed, snap) => {
+    const owner = snap && snap.val();
+    applyRole(owner === mySeat);
+  });
 
   worriesRef.on('value', snap => {
     worriesCache = snap.val() || {};
@@ -345,6 +371,16 @@ function enter(r, seat) {
   });
 }
 
+function applyRole(teacher) {
+  isTeacher = teacher;
+  const body = document.body;
+  body.classList.remove('is-teacher', 'is-student');
+  body.classList.add(teacher ? 'is-teacher' : 'is-student');
+  const badge = $('roleBadge');
+  badge.className = 'role-badge ' + (teacher ? 'teacher' : 'student');
+  badge.textContent = teacher ? '🎓 老師' : '👤 學生';
+}
+
 $('leaveBtn').onclick = () => {
   if (worriesRef) worriesRef.off();
   sessionStorage.removeItem('llp-session');
@@ -356,10 +392,13 @@ $('leaveBtn').onclick = () => {
    ============================================================ */
 function renderList() {
   const list = $('worryList');
-  const entries = Object.entries(worriesCache)
+  const all = Object.entries(worriesCache)
     .sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0));
+  // 老師看全部；學生只看自己送出的
+  const entries = isTeacher ? all : all.filter(([, w]) => w.seat === mySeat);
+
   list.innerHTML = '';
-  entries.forEach(([key, w], i) => {
+  entries.forEach(([key, w]) => {
     const div = document.createElement('div');
     div.className = 'worry-item';
     const canDel = w.seat === mySeat;
@@ -372,7 +411,13 @@ function renderList() {
     `;
     list.appendChild(div);
   });
-  $('worryCount').textContent = `煩惱池：${entries.length} 則`;
+
+  if (isTeacher) {
+    $('worryCount').textContent = `煩惱池：${all.length} 則（全班）`;
+  } else {
+    $('worryCount').textContent = `你已送出：${entries.length} 則`;
+  }
+
   list.querySelectorAll('.del').forEach(btn => {
     btn.onclick = () => worriesRef.child(btn.dataset.key).remove();
   });
